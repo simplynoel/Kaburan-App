@@ -16,7 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faDashboard, faGear, faPesoSign, faSearch } from '@fortawesome/free-solid-svg-icons';
 import { faCalendar, faChartBar, faUserCircle } from '@fortawesome/free-regular-svg-icons';
 //Firebase functions
-import { collection, getDocs, query, where, addDoc, updateDoc, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where, addDoc, updateDoc, orderBy, doc } from 'firebase/firestore';
 //Picker Dropdown
 import Picker from 'react-native-picker-select';
 
@@ -80,6 +80,31 @@ export default function App() {
   
   const [costs, setCosts] = useState([]);
   const [total, setTotal] = useState();
+  const [dates, setDates] = useState({});
+
+  const fetchDates = async () => {
+    const dateList = [];
+    //fetch dates
+    const datesQuery = await getDocs(query(collection(database,"dates")));
+    datesQuery.forEach((date)=> {
+      dateList.push({id:date.id, selectedDate: date.data().currentDate, selected:true, setDotColor:'red'});
+    });
+
+    //format
+    const markedDates = {};
+    dateList.forEach(event => {
+      markedDates[event.selectedDate] = {selected: true, marked: true, selectedColor: 'orange',selectedDotColor: 'orange'};
+    });
+  
+    setDates(markedDates);
+    console.log("DatesList " + dates);
+  }
+
+
+  useEffect(()=>{
+    fetchDates();
+  },[])
+
 
   const fetchData = async() => {  
     const data = [];
@@ -89,6 +114,7 @@ export default function App() {
       data.push({id:doc.id, type:doc.data().type, dateMade:doc.data().dateMade, cost:doc.data().cost, name:doc.data().name, time:doc.data().time})
       totalAmount.push(Number(doc.data().cost))
     })
+
 
     function sortByTime(array) {
       // Check if the input is an array
@@ -126,12 +152,18 @@ export default function App() {
           name: name,
           cost: cost
         })
+        await addDoc(collection(database,"dates"),{
+          currentDate: moment(currentDate).format("YYYY-MM-DD"),
+          selected: true,
+          dot: "orange"
+        })
         setName("")
         setCost("")
         setType("")
       }else{
         alert("Inputs cannot be empty.")
       }
+      fetchDates()
   }
 
   //searching
@@ -214,7 +246,7 @@ export default function App() {
                     </ScrollView>
                     {
                         showCalendar===true&&
-                        <View style={{width:350,height:400,backgroundColor:'white',elevation:15,shadowColor:'black',position:'relative',alignSelf:'center'}}>
+                        <View style={{width:'90%',height:400,backgroundColor:'white',elevation:15,shadowColor:'black',position:'relative',alignSelf:'center'}}>
                           <Calendar
                             // Customize the appearance of the calendar
                             style={{
@@ -230,12 +262,8 @@ export default function App() {
                               setCurrentDate(moment(day).subtract(1,"month"))
                               setShowCalendar(false)
                             }}
-                            // Mark specific dates as marked
-                            //markedDates={{
-                              //'2012-03-01': {selected: true, marked: true, selectedColor: 'blue'},
-                              //'2012-03-02': {marked: true},
-                              //'2012-03-03': {selected: true, marked: true, selectedColor: 'blue'}
-                            //}}
+                             Mark specific dates as marked
+                            markedDates={dates}
                           />
                         </View>
                       }
